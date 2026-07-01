@@ -5,91 +5,289 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Windows Privilege Escalation | SOC Project</title>
 
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            scroll-behavior: smooth;
         }
 
-        body {
+        html, body {
+            font-family: 'Segoe UI', sans-serif;
             background: #ffffff;
-            color: #222;
+            color: #111;
             overflow-x: hidden;
+            user-select: none;
+            margin: 0;
+            padding: 0;
         }
 
-        /* ===== BUBBLES ===== */
-        .bubbles span {
+        /* ===== LOADING SCREEN ===== */
+        #loader {
             position: fixed;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(124, 58, 237, 0.06);
-            animation: float 18s linear infinite;
+            inset: 0;
+            z-index: 99999;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        #loader.hidden {
+            opacity: 0;
             pointer-events: none;
+            transform: scale(1.1);
+            filter: blur(8px);
+        }
+
+        #loader .spinner {
+            width: 55px;
+            height: 55px;
+            border: 3px solid rgba(255, 255, 255, 0.06);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 0.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+        }
+
+        #loader p {
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 18px;
+            font-size: 11px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            font-weight: 400;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(0.95); }
+            50% { transform: rotate(180deg) scale(1.05); }
+            100% { transform: rotate(360deg) scale(0.95); }
+        }
+
+        /* ===== CANVAS PARTICLES ===== */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 0;
+            pointer-events: none;
+            background: #ffffff;
         }
 
-        .bubbles span:nth-child(1) { left: 5%; top: 80%; }
-        .bubbles span:nth-child(2) { left: 20%; top: 20%; width: 70px; height: 70px; background: rgba(6, 182, 212, 0.05); }
-        .bubbles span:nth-child(3) { left: 35%; top: 70%; }
-        .bubbles span:nth-child(4) { left: 50%; top: 30%; width: 60px; height: 60px; background: rgba(124, 58, 237, 0.05); }
-        .bubbles span:nth-child(5) { left: 65%; top: 90%; }
-        .bubbles span:nth-child(6) { left: 80%; top: 25%; width: 80px; height: 80px; background: rgba(6, 182, 212, 0.04); }
-        .bubbles span:nth-child(7) { left: 90%; top: 75%; }
-        .bubbles span:nth-child(8) { left: 15%; top: 55%; }
-        .bubbles span:nth-child(9) { left: 55%; top: 10%; }
-        .bubbles span:nth-child(10) { left: 75%; top: 60%; }
-
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-30px); }
-            100% { transform: translateY(0px); }
+        /* ===== FLOATING BUBBLES ===== */
+        .bubbles-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            pointer-events: none;
         }
 
-        /* ===== CONTAINER ===== */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: floatBubble 30s ease-in-out infinite alternate;
+        }
+
+        .bubble:nth-child(1) { width: 140px; height: 140px; background: radial-gradient(circle at 30% 30%, #ff9a56, #ff6b35, #e0552d); top: 5%; left: 2%; animation-duration: 28s; }
+        .bubble:nth-child(2) { width: 180px; height: 180px; background: radial-gradient(circle at 30% 30%, #ff8aac, #ff1493, #d4127a); top: 52%; left: 80%; animation-duration: 32s; animation-delay: -3s; }
+        .bubble:nth-child(3) { width: 110px; height: 110px; background: radial-gradient(circle at 30% 30%, #4dd0e1, #00bcd4, #0097a7); top: 20%; left: 70%; animation-duration: 26s; animation-delay: -6s; }
+        .bubble:nth-child(4) { width: 160px; height: 160px; background: radial-gradient(circle at 30% 30%, #b39ddb, #7c3aed, #5b21b6); top: 70%; left: 5%; animation-duration: 34s; animation-delay: -9s; }
+        .bubble:nth-child(5) { width: 120px; height: 120px; background: radial-gradient(circle at 30% 30%, #f8a5c2, #f78fb3, #e84393); top: 40%; left: 40%; animation-duration: 29s; animation-delay: -4s; }
+        .bubble:nth-child(6) { width: 200px; height: 200px; background: radial-gradient(circle at 30% 30%, #ffe082, #fdd835, #f9a825); top: 2%; left: 45%; animation-duration: 36s; animation-delay: -7s; }
+        .bubble:nth-child(7) { width: 90px; height: 90px; background: radial-gradient(circle at 30% 30%, #81c784, #4caf50, #2e7d32); top: 80%; left: 55%; animation-duration: 24s; animation-delay: -2s; }
+        .bubble:nth-child(8) { width: 150px; height: 150px; background: radial-gradient(circle at 30% 30%, #81d4fa, #29b6f6, #0288d1); top: 30%; left: 15%; animation-duration: 30s; animation-delay: -8s; }
+        .bubble:nth-child(9) { width: 170px; height: 170px; background: radial-gradient(circle at 30% 30%, #ef9a9a, #ef5350, #c62828); top: 10%; left: 88%; animation-duration: 27s; animation-delay: -5s; }
+        .bubble:nth-child(10) { width: 100px; height: 100px; background: radial-gradient(circle at 30% 30%, #80cbc4, #26a69a, #00695c); top: 65%; left: 25%; animation-duration: 31s; animation-delay: -10s; }
+        .bubble:nth-child(11) { width: 130px; height: 130px; background: radial-gradient(circle at 30% 30%, #9fa8da, #5c6bc0, #283593); top: 45%; left: 65%; animation-duration: 33s; animation-delay: -1s; }
+        .bubble:nth-child(12) { width: 85px; height: 85px; background: radial-gradient(circle at 30% 30%, #ffcc80, #ffa726, #e65100); top: 85%; left: 75%; animation-duration: 25s; animation-delay: -11s; }
+        .bubble:nth-child(13) { width: 190px; height: 190px; background: radial-gradient(circle at 30% 30%, #ef9a9a, #e57373, #d32f2f); top: 35%; left: 10%; animation-duration: 35s; animation-delay: -6s; }
+        .bubble:nth-child(14) { width: 95px; height: 95px; background: radial-gradient(circle at 30% 30%, #c5e1a5, #8bc34a, #33691e); top: 15%; left: 35%; animation-duration: 29s; animation-delay: -13s; }
+        .bubble:nth-child(15) { width: 115px; height: 115px; background: radial-gradient(circle at 30% 30%, #b39ddb, #9575cd, #4527a0); top: 60%; left: 45%; animation-duration: 31s; animation-delay: -8s; }
+        .bubble:nth-child(16) { width: 155px; height: 155px; background: radial-gradient(circle at 30% 30%, #a5d6a7, #66bb6a, #1b5e20); top: 75%; left: 62%; animation-duration: 28s; animation-delay: -4s; }
+        .bubble:nth-child(17) { width: 135px; height: 135px; background: radial-gradient(circle at 30% 30%, #80deea, #00acc1, #006064); top: 8%; left: 55%; animation-duration: 32s; animation-delay: -9s; }
+        .bubble:nth-child(18) { width: 105px; height: 105px; background: radial-gradient(circle at 30% 30%, #ffab91, #ff7043, #bf360c); top: 50%; left: 8%; animation-duration: 30s; animation-delay: -12s; }
+        .bubble:nth-child(19) { width: 125px; height: 125px; background: radial-gradient(circle at 30% 30%, #90a4ae, #607d8b, #263238); top: 28%; left: 82%; animation-duration: 34s; animation-delay: -3s; }
+        .bubble:nth-child(20) { width: 145px; height: 145px; background: radial-gradient(circle at 30% 30%, #f48fb1, #ec407a, #880e4f); top: 90%; left: 35%; animation-duration: 26s; animation-delay: -7s; }
+
+        @keyframes floatBubble {
+            0% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(60px, -80px) scale(1.15); }
+            50% { transform: translate(-40px, 60px) scale(0.85); }
+            75% { transform: translate(80px, 40px) scale(1.08); }
+            100% { transform: translate(-60px, -60px) scale(1); }
+        }
+
+        /* ===== CURSOR ===== */
+        #cursor-dot {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: #7c3aed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: width 0.15s ease, height 0.15s ease;
+        }
+
+        #cursor-glow {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.3), transparent 70%);
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .cursor-hover #cursor-dot {
+            width: 14px;
+            height: 14px;
+            background: #06b6d4;
+        }
+
+        .cursor-hover #cursor-glow {
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.25), transparent 70%);
+        }
+
+        /* ===== NAV ===== */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 6%;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            z-index: 1000;
+            transition: all 0.4s ease;
+        }
+
+        nav.scrolled {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
+        }
+
+        .logo {
+            font-weight: 900;
+            font-size: 17px;
+            letter-spacing: 0.2em;
+            background: linear-gradient(135deg, #7c3aed, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            text-decoration: none;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #111;
+            margin-left: 24px;
+            font-weight: 700;
+            font-size: 12px;
+            position: relative;
+            transition: color 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #7c3aed, #06b6d4);
+            transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        nav a:hover {
+            color: #7c3aed;
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        /* ===== SECTIONS ===== */
+        section {
+            padding: 100px 6% 60px;
+            min-height: 80vh;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            z-index: 2;
+        }
+
+        section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         .container {
             width: 85%;
             max-width: 1100px;
             margin: auto;
-            padding: 60px 0;
-            position: relative;
-            z-index: 1;
         }
 
-        /* ===== BACK BUTTON ===== */
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 24px;
-            background: #111;
-            color: #fff;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 13px;
+        /* ===== CARDS ===== */
+        .card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            padding: 35px;
+            border-radius: 20px;
             margin-bottom: 30px;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            border: none;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        .back-btn:hover {
-            background: #7c3aed;
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 12px 30px rgba(124, 58, 237, 0.2);
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 50px rgba(124, 58, 237, 0.06);
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+            letter-spacing: -0.3px;
+            color: #111;
+        }
+
+        h2 i {
+            color: #7c3aed;
+            margin-right: 10px;
+        }
+
+        .card p {
+            color: #444;
+            line-height: 1.8;
+            font-size: 15px;
         }
 
         /* ===== HEADER ===== */
-        header {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
         .tag {
             color: #7c3aed;
             letter-spacing: 3px;
@@ -121,42 +319,30 @@
             font-size: 16px;
         }
 
-        /* ===== CARDS ===== */
-        .card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            padding: 35px;
-            border-radius: 20px;
+        /* ===== BACK BUTTON ===== */
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 24px;
+            background: #111;
+            color: #fff;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
             margin-bottom: 30px;
-            border: 1px solid rgba(0, 0, 0, 0.04);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 20px 50px rgba(124, 58, 237, 0.06);
-        }
-
-        h2 {
-            font-size: 24px;
-            font-weight: 800;
-            margin-bottom: 18px;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: none;
+            cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: -0.3px;
-            color: #111;
+            letter-spacing: 0.8px;
         }
 
-        h2 i {
-            color: #7c3aed;
-            margin-right: 10px;
-        }
-
-        .card p {
-            color: #444;
-            line-height: 1.8;
-            font-size: 15px;
+        .back-btn:hover {
+            background: #7c3aed;
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(124, 58, 237, 0.2);
         }
 
         /* ===== TIMELINE ===== */
@@ -277,10 +463,6 @@
             gap: 8px;
         }
 
-        .gallery .img-card .label i {
-            font-size: 12px;
-        }
-
         .gallery .img-card .label .dot {
             display: inline-block;
             width: 8px;
@@ -325,13 +507,13 @@
         /* ===== FOOTER ===== */
         footer {
             text-align: center;
-            margin-top: 40px;
-            padding: 20px 0;
+            padding: 32px 6%;
             color: #999;
-            font-size: 13px;
+            font-size: 12px;
             border-top: 1px solid rgba(0, 0, 0, 0.03);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            font-weight: 600;
         }
 
         footer strong {
@@ -361,159 +543,274 @@
 </head>
 <body>
 
-<!-- ===== BUBBLES ===== -->
-<div class="bubbles">
-    <span></span><span></span><span></span><span></span><span></span>
-    <span></span><span></span><span></span><span></span><span></span>
+<!-- ===== LOADER ===== -->
+<div id="loader">
+    <div class="spinner"></div>
+    <p>LOADING</p>
 </div>
 
-<!-- ===== CONTAINER ===== -->
-<div class="container">
+<!-- ===== CANVAS PARTICLES ===== -->
+<canvas id="particleCanvas"></canvas>
 
-    <!-- BACK BUTTON -->
-    <a href="../socprojects.html" class="back-btn">
-        <i class="fas fa-arrow-left"></i> Back to Projects
-    </a>
+<!-- ===== FLOATING BUBBLES ===== -->
+<div class="bubbles-container">
+    <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+    <div class="bubble"></div><div class="bubble"></div>
+</div>
 
-    <!-- HEADER -->
-    <header>
-        <p class="tag">SOC Case Study #01</p>
-        <h1>Windows <span>Privilege Escalation</span></h1>
-        <p class="subtitle">
-            Simulated privilege escalation attack investigation using
-            Windows Event Logs and Splunk Enterprise.
-        </p>
-    </header>
+<!-- ===== CURSOR ===== -->
+<div id="cursor-dot"></div>
+<div id="cursor-glow"></div>
 
-    <!-- PROJECT OVERVIEW -->
-    <section class="card">
-        <h2><i class="fas fa-info-circle"></i> Project Overview</h2>
-        <p>
-            This project demonstrates how a SOC analyst detects, investigates,
-            and documents a privilege escalation attack using Windows Security
-            logs collected in Splunk. The investigation covers log collection,
-            event correlation, detection query development, and MITRE ATT&CK
-            framework mapping.
-        </p>
-    </section>
+<!-- ===== NAV ===== -->
+<nav id="navbar">
+    <a href="https://likith-raj.github.io/portofolio/" class="logo">LIKITH RAJ</a>
+    <div>
+        <a href="https://likith-raj.github.io/portofolio/"><i class="fas fa-arrow-left"></i> BACK TO PORTFOLIO</a>
+    </div>
+</nav>
 
-    <!-- ATTACK TIMELINE -->
-    <section class="card">
-        <h2><i class="fas fa-clock"></i> Attack Timeline</h2>
+<!-- ===== MAIN CONTENT ===== -->
+<section id="project-content">
+    <div class="container">
 
-        <div class="timeline">
-            <div class="step">
-                <h3>01</h3>
-                <div class="step-label">Failed Login Attempts</div>
-                <p>Multiple failed login attempts detected (Event ID 4625)</p>
-            </div>
-            <div class="step">
-                <h3>02</h3>
-                <div class="step-label">Successful Login</div>
-                <p>Successful login detected (Event ID 4624)</p>
-            </div>
-            <div class="step">
-                <h3>03</h3>
-                <div class="step-label">User Creation</div>
-                <p>New local user account created (Event ID 4720)</p>
-            </div>
-            <div class="step">
-                <h3>04</h3>
-                <div class="step-label">Admin Privilege</div>
-                <p>User added to Administrators group (Event ID 4732)</p>
+        <!-- HEADER -->
+        <header style="text-align: center; margin-bottom: 50px;">
+            <p class="tag">SOC Case Study #01</p>
+            <h1>Windows <span>Privilege Escalation</span></h1>
+            <p class="subtitle">
+                Simulated privilege escalation attack investigation using
+                Windows Event Logs and Splunk Enterprise.
+            </p>
+        </header>
+
+        <!-- PROJECT OVERVIEW -->
+        <div class="card">
+            <h2><i class="fas fa-info-circle"></i> Project Overview</h2>
+            <p>
+                This project demonstrates how a SOC analyst detects, investigates,
+                and documents a privilege escalation attack using Windows Security
+                logs collected in Splunk. The investigation covers log collection,
+                event correlation, detection query development, and MITRE ATT&CK
+                framework mapping.
+            </p>
+        </div>
+
+        <!-- ATTACK TIMELINE -->
+        <div class="card">
+            <h2><i class="fas fa-clock"></i> Attack Timeline</h2>
+
+            <div class="timeline">
+                <div class="step">
+                    <h3>01</h3>
+                    <div class="step-label">Failed Login Attempts</div>
+                    <p>Multiple failed login attempts detected (Event ID 4625)</p>
+                </div>
+                <div class="step">
+                    <h3>02</h3>
+                    <div class="step-label">Successful Login</div>
+                    <p>Successful login detected (Event ID 4624)</p>
+                </div>
+                <div class="step">
+                    <h3>03</h3>
+                    <div class="step-label">User Creation</div>
+                    <p>New local user account created (Event ID 4720)</p>
+                </div>
+                <div class="step">
+                    <h3>04</h3>
+                    <div class="step-label">Admin Privilege</div>
+                    <p>User added to Administrators group (Event ID 4732)</p>
+                </div>
             </div>
         </div>
-    </section>
 
-    <!-- SPL QUERIES -->
-    <section class="card">
-        <h2><i class="fas fa-code"></i> SPL Queries</h2>
-        <pre>
+        <!-- SPL QUERIES -->
+        <div class="card">
+            <h2><i class="fas fa-code"></i> SPL Queries</h2>
+            <pre>
 Failed Login      -> eventcode=4625
 Successful Login  -> eventcode=4624
 User Creation     -> eventcode=4720
 Admin Privilege   -> eventcode=4732
-        </pre>
-    </section>
+            </pre>
+        </div>
 
-    <!-- MITRE ATT&CK -->
-    <section class="card">
-        <h2><i class="fas fa-sitemap"></i> MITRE ATT&CK Mapping</h2>
-        <ul>
-            <li>T1078 - Valid Accounts</li>
-            <li>T1098 - Account Manipulation</li>
-        </ul>
-    </section>
+        <!-- MITRE ATT&CK -->
+        <div class="card">
+            <h2><i class="fas fa-sitemap"></i> MITRE ATT&CK Mapping</h2>
+            <ul>
+                <li>T1078 - Valid Accounts</li>
+                <li>T1098 - Account Manipulation</li>
+            </ul>
+        </div>
 
-    <!-- SCREENSHOTS -->
-    <section class="card">
-        <h2><i class="fas fa-image"></i> Screenshots</h2>
+        <!-- SCREENSHOTS -->
+        <div class="card">
+            <h2><i class="fas fa-image"></i> Screenshots</h2>
 
-        <div class="gallery">
-            <div class="img-card" onclick="window.open('project1/01_Failed_Login.png','_blank')">
-                <img src="project1/01_Failed_Login.png" alt="Failed Login">
-                <div class="label">
-                    <span class="dot red"></span> Failed Login (4625)
+            <div class="gallery">
+                <div class="img-card" onclick="window.open('project1/01_Failed_Login.png','_blank')">
+                    <img src="project1/01_Failed_Login.png" alt="Failed Login">
+                    <div class="label">
+                        <span class="dot red"></span> Failed Login (4625)
+                    </div>
                 </div>
-            </div>
 
-            <div class="img-card" onclick="window.open('project1/02_Successful_Login.png','_blank')">
-                <img src="project1/02_Successful_Login.png" alt="Successful Login">
-                <div class="label">
-                    <span class="dot green"></span> Successful Login (4624)
+                <div class="img-card" onclick="window.open('project1/02_Successful_Login.png','_blank')">
+                    <img src="project1/02_Successful_Login.png" alt="Successful Login">
+                    <div class="label">
+                        <span class="dot green"></span> Successful Login (4624)
+                    </div>
                 </div>
-            </div>
 
-            <div class="img-card" onclick="window.open('project1/03_User_Creation.png','_blank')">
-                <img src="project1/03_User_Creation.png" alt="User Creation">
-                <div class="label">
-                    <span class="dot blue"></span> User Creation (4720)
+                <div class="img-card" onclick="window.open('project1/03_User_Creation.png','_blank')">
+                    <img src="project1/03_User_Creation.png" alt="User Creation">
+                    <div class="label">
+                        <span class="dot blue"></span> User Creation (4720)
+                    </div>
                 </div>
-            </div>
 
-            <div class="img-card" onclick="window.open('project1/04_Admin_Group.png','_blank')">
-                <img src="project1/04_Admin_Group.png" alt="Admin Group">
-                <div class="label">
-                    <span class="dot purple"></span> Admin Group Added (4732)
+                <div class="img-card" onclick="window.open('project1/04_Admin_Group.png','_blank')">
+                    <img src="project1/04_Admin_Group.png" alt="Admin Group">
+                    <div class="label">
+                        <span class="dot purple"></span> Admin Group Added (4732)
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <!-- INCIDENT SUMMARY -->
-    <section class="card">
-        <h2><i class="fas fa-file-alt"></i> Incident Summary</h2>
+        <!-- INCIDENT SUMMARY -->
+        <div class="card">
+            <h2><i class="fas fa-file-alt"></i> Incident Summary</h2>
 
-        <div class="summary-grid">
-            <div class="summary-item">
-                <h4>Key Findings</h4>
-                <p>
-                    Investigation identified multiple failed authentication
-                    attempts followed by a successful login. Shortly afterwards,
-                    a new user account was created and added to the local
-                    administrators group.
-                </p>
-            </div>
-            <div class="summary-item">
-                <h4>Recommendations</h4>
-                <p>
-                    Implement account lockout policies, enable logging for
-                    all administrative actions, and monitor for suspicious
-                    account creations in real-time.
-                </p>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <h4>Key Findings</h4>
+                    <p>
+                        Investigation identified multiple failed authentication
+                        attempts followed by a successful login. Shortly afterwards,
+                        a new user account was created and added to the local
+                        administrators group.
+                    </p>
+                </div>
+                <div class="summary-item">
+                    <h4>Recommendations</h4>
+                    <p>
+                        Implement account lockout policies, enable logging for
+                        all administrative actions, and monitor for suspicious
+                        account creations in real-time.
+                    </p>
+                </div>
             </div>
         </div>
-    </section>
 
-    <!-- FOOTER -->
-    <footer>
-        Developed by <strong>Likith Raj</strong> &bull; SOC Investigation &bull; 2026
-    </footer>
+        <!-- FOOTER -->
+        <footer style="margin-top: 40px; border-top: 1px solid rgba(0,0,0,0.03); padding-top: 30px;">
+            Developed by <strong>Likith Raj</strong> &bull; SOC Investigation &bull; 2026
+        </footer>
+    </div>
+</section>
 
-</div>
+<script>
+    // =============================================
+    // CURSOR
+    // =============================================
+    const cursorDot = document.getElementById('cursor-dot');
+    const cursorGlow = document.getElementById('cursor-glow');
 
-<!-- ===== FONTAWESOME ===== -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    document.addEventListener('mousemove', function(e) {
+        cursorDot.style.left = e.clientX - 4 + 'px';
+        cursorDot.style.top = e.clientY - 4 + 'px';
+        cursorGlow.style.left = e.clientX + 'px';
+        cursorGlow.style.top = e.clientY + 'px';
+    });
+
+    document.querySelectorAll('a, .btn, .img-card, .step, .card').forEach(el => {
+        el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+        el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+    });
+
+    if ('ontouchstart' in window) {
+        cursorDot.style.display = 'none';
+        cursorGlow.style.display = 'none';
+    }
+
+    // =============================================
+    // CANVAS PARTICLES
+    // =============================================
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const particles = [];
+    const colors = ['#7c3aed', '#ff6b35', '#ff1493', '#00b894', '#fdcb6e', '#0984e3', '#6c5ce7'];
+
+    for (let i = 0; i < 60; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            radius: Math.random() * 3 + 1.5,
+            dx: (Math.random() - 0.5) * 0.5,
+            dy: (Math.random() - 0.5) * 0.5,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            opacity: Math.random() * 0.12 + 0.04
+        });
+    }
+
+    function drawParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            p.x += p.dx;
+            p.y += p.dy;
+            if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.opacity;
+            ctx.fill();
+        });
+        requestAnimationFrame(drawParticles);
+    }
+    drawParticles();
+
+    // =============================================
+    // LOADER
+    // =============================================
+    window.addEventListener('load', function() {
+        const loader = document.getElementById('loader');
+        
+        setTimeout(function() {
+            loader.classList.add('hidden');
+            window.scrollTo(0, 0);
+            
+            document.querySelectorAll('section').forEach(function(el, i) {
+                setTimeout(function() {
+                    el.classList.add('visible');
+                }, i * 100);
+            });
+        }, 800);
+    });
+
+    // =============================================
+    // NAV SCROLL EFFECT
+    // =============================================
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', function() {
+        navbar.classList.toggle('scrolled', window.scrollY > 40);
+    });
+</script>
 
 </body>
 </html>
